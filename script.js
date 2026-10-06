@@ -1,6 +1,4 @@
 function gameBoard(){
-    console.log("made it");
-
     const board = [];
 
     //Create a 2D array that represents the game board
@@ -11,17 +9,14 @@ function gameBoard(){
         }
     }
         
+    //Return the current state of the board
+    const getBoard = () => board;
+
     //Display the board in its current state
     const displayBoard = () => {
         const boardWithCellValues = board.map((row) =>
           row.map((cell) => cell.getValue())
         );
-        console.log(boardWithCellValues);
-
-        const debug = document.querySelector("#debug");
-        debug.textContent = boardWithCellValues
-          .map((row) => row.map((v) => v || "-").join(" | "))
-          .join("\n");
     };
 
     //Place player tokens on the board
@@ -57,7 +52,7 @@ function gameBoard(){
     }
 
     //Provide an interface to interact with the game board
-    return {displayBoard, placeToken, checkWin, checkBoardFull};
+    return {getBoard, displayBoard, placeToken, checkWin, checkBoardFull};
 }
 
 //this is what each cell on the gameboard will be
@@ -84,46 +79,88 @@ function gameController () {
 
   let activePlayer = players[Math.floor(Math.random() * 2)];
   
+  const getActivePlayer = () => activePlayer;
+
   const swapPlayer = () => {
     activePlayer = activePlayer === players[0] ? players[1] : players[0]; 
   
   };
   
-  const playRound = (row, column) => {
-    console.log(`${activePlayer.name}'s turn!`);
-    console.log(`placing token in row ${row}, column ${column}`); 
-    
+  const playRound = (row, column, statusDiv) => {
+    // Display player's turn
+    statusDiv.textContent = `${activePlayer.name}'s turn...`;
+
     if (!board.placeToken(row, column, activePlayer.token)) {
-      console.log("That spot is taken!! Try again.");
+      statusDiv.textContent = "That spot is taken!! Try again.";
       return;
     }
 
     board.displayBoard();
 
     //Check if player won
-    //if (board.checkWin(activePlayer.token)){
-    //    console.log(`${activePlayer.name} wins!!!`);
-    //    return;
-    //}
+    if (board.checkWin(activePlayer.token)){
+        statusDiv.textContent = `${activePlayer.name} wins!!!`;
+        return;
+    }
 
     //Check if board is full
     if (board.checkBoardFull()){
-        console.log("No winners, board is full.")
+        statusDiv.textContent = "No winners, board is full.";
         return;
     }
 
     swapPlayer();
   }
   
-  return {playRound};
+  return {playRound, getActivePlayer, getBoard: board.getBoard};
 }
 
-const game = gameController();
+function screenController() {
+    const game = gameController();
+    const statusDiv = document.getElementById("status");
+    const boardDiv = document.getElementById("board");
 
-playRoundBtn = document.getElementById("playRound");
+    const drawScreen = () => {
+      // clear the board
+      boardDiv.textContent = "";
 
-playRoundBtn.addEventListener("click", () => {
-    const row = Math.floor(Math.random() * 3);
-    const column = Math.floor(Math.random() * 3);
-    game.playRound(row, column);
-});
+      // get the current version of the board
+      const board = game.getBoard();
+
+      // Render board squares
+      board.forEach((row, rowIndex) => {
+        row.forEach((cell, colIndex) => {
+          // Anything clickable should be a button!!
+          const cellButton = document.createElement("button");
+          cellButton.classList.add("cell");
+
+          // Create a data attribute to identify the row and column
+          cellButton.dataset.row = rowIndex;
+          cellButton.dataset.column = colIndex;
+          cellButton.textContent = cell.getValue();
+          boardDiv.appendChild(cellButton);
+        });
+      });
+    }
+
+    // Add event listener for the board
+    function clickHandlerBoard(e) {
+      const selectedRow = e.target.dataset.row;
+      const selectedCol = e.target.dataset.column;
+      // Make sure I've clicked on a space and not the gaps in between
+      if (!selectedRow) return;
+      if (!selectedCol) return;
+
+      game.playRound(selectedRow, selectedCol, statusDiv);
+      drawScreen();
+    }
+
+    boardDiv.addEventListener("click", clickHandlerBoard);
+
+    //Draw the initial screen
+    drawScreen();
+
+    return {drawScreen};
+}
+
+screenController();
