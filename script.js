@@ -12,6 +12,10 @@ function gameBoard(){
     //Return the current state of the board
     const getBoard = () => board;
 
+    const resetBoard = () => {
+      board.forEach((row) => row.forEach((cell) => cell.setValue('')));
+    }
+
     //Display the board in its current state
     const displayBoard = () => {
         const boardWithCellValues = board.map((row) =>
@@ -29,7 +33,6 @@ function gameBoard(){
 
     //Check if the given token fills any row, column, or diagonal
     const checkWin = (playerToken) => {
-        console.log("checking win for " + playerToken);
         const lines = [];
 
         //Build each line as a list of [row, column] coordinates
@@ -52,7 +55,7 @@ function gameBoard(){
     }
 
     //Provide an interface to interact with the game board
-    return {getBoard, displayBoard, placeToken, checkWin, checkBoardFull};
+    return {getBoard, resetBoard, displayBoard, placeToken, checkWin, checkBoardFull};
 }
 
 //this is what each cell on the gameboard will be
@@ -69,15 +72,26 @@ function cell() {
 }
 
 //This will control flow of the game
-function gameController () {
+function gameController (player1, player2) {
     const board = gameBoard();
 
     const players = [
-      { name: "Wicket", token: "X",},
-      { name: "Bacchus", token: "O",},
+      { name: player1, token: "X",},
+      { name: player2, token: "O",},
     ];
 
+  const resetGame = (player1, player2) => {
+    players[0].name = player1;
+    players[1].name = player2;
+    board.resetBoard();
+    activePlayer = players[Math.floor(Math.random() * 2)];
+    gameOver = false;
+  }
+
   let activePlayer = players[Math.floor(Math.random() * 2)];
+
+  //Set to true when someone wins or the board fills up
+  let gameOver = false;
   
   const getActivePlayer = () => activePlayer;
 
@@ -87,8 +101,8 @@ function gameController () {
   };
   
   const playRound = (row, column, statusDiv) => {
-    // Display player's turn
-    statusDiv.textContent = `${activePlayer.name}'s turn...`;
+    //Ignore moves once the game has ended
+    if (gameOver) return;
 
     if (!board.placeToken(row, column, activePlayer.token)) {
       statusDiv.textContent = "That spot is taken!! Try again.";
@@ -100,23 +114,31 @@ function gameController () {
     //Check if player won
     if (board.checkWin(activePlayer.token)){
         statusDiv.textContent = `${activePlayer.name} wins!!!`;
+        gameOver = true;
         return;
     }
 
     //Check if board is full
     if (board.checkBoardFull()){
         statusDiv.textContent = "No winners, board is full.";
+        gameOver = true;
         return;
     }
 
     swapPlayer();
+
+    // Display next player's turn
+    statusDiv.textContent = `${activePlayer.name}'s (${activePlayer.token}) turn...`;
   }
   
-  return {playRound, getActivePlayer, getBoard: board.getBoard};
+  return {resetGame, playRound, getActivePlayer, getBoard: board.getBoard};
 }
 
 function screenController() {
-    const game = gameController();
+    let player1 = document.getElementById("player1").value;
+    let player2 = document.getElementById("player2").value;
+    const game = gameController(player1, player2);
+    const resetBtn = document.getElementById("resetBtn");
     const statusDiv = document.getElementById("status");
     const boardDiv = document.getElementById("board");
 
@@ -157,8 +179,17 @@ function screenController() {
 
     boardDiv.addEventListener("click", clickHandlerBoard);
 
-    //Draw the initial screen
-    drawScreen();
+    // Add event listener to start game
+    function resetBoard(e) {
+      player1 = document.getElementById("player1").value;
+      player2 = document.getElementById("player2").value;
+      game.resetGame(player1, player2);
+      resetBtn.textContent = "Reset Game";
+      statusDiv.textContent = `${game.getActivePlayer().name}'s (${game.getActivePlayer().token}) turn...`;
+      drawScreen();
+    }
+
+    resetBtn.addEventListener("click", resetBoard);
 
     return {drawScreen};
 }
